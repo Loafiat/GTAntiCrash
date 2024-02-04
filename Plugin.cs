@@ -12,48 +12,54 @@ namespace AntiCrash
 	[BepInPlugin("Lofiat.AntiCrash", "AntiCrash", "1.0.0")]
 	public class Plugin : BaseUnityPlugin
 	{
-        bool inRoom;
-        Transform ObjectPools, SodaBubbles, playerTransform;
+        bool inRoom, bubbleInit;
+        Transform ObjectPools, Basement;
         SinglePool BubblePool;
         void Start() => Utilla.Events.GameInitialized += OnGameInitialized;
         void OnGameInitialized(object sender, EventArgs e)
         {
+            bubbleInit = true;
             ObjectPools = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools").transform;
-            playerTransform = GameObject.Find("Player Objects/Local VRRig/Local Gorilla Player").transform;
-            SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
-            BubblePool = ObjectPools.GetComponent<ObjectPools>().GetPoolByObjectType(SodaBubbles.gameObject);
+            BubblePool = ObjectPools.GetComponent<ObjectPools>().GetPoolByObjectType(GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)"));
+            Basement = GameObject.Find("Environment Objects/LocalObjects_Prefab/Basement").transform;
         }
 
-        [ModdedGamemodeJoin]
-        public void OnJoin(string gamemode)
+        private void DestroyBubbles()
         {
-            inRoom = true;
-            BubblePool.initAmountToPool = 0;
-            BubblePool.Initialize(ObjectPools.gameObject);
+            if (bubbleInit)
+            {
+                bubbleInit = false;
+                BubblePool.initAmountToPool = 0;
+                BubblePool.Initialize(ObjectPools.gameObject);
+            }
         }
 
         void Update()
         {
-            if (inRoom)
+            if (Basement.gameObject.activeSelf == false)
             {
-                if (Time.deltaTime == 2000)
-                {
-                    ObjectPools.gameObject.SetActive(false);
-                }
+                DestroyBubbles();
+            }
+            else if (Basement.gameObject.activeSelf == true)
+            {
+                CreateBubbles();
             }
         }
 
-        [ModdedGamemodeLeave]
-		public void OnLeave(string gamemode)
+        private void CreateBubbles()
         {
-            inRoom = true;
-            foreach (Transform Bubbles in SodaBubbles)
+            if (!bubbleInit)
             {
-                Destroy(Bubbles.gameObject);
+                bubbleInit = true;
+                SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
+                foreach (Transform Bubbles in SodaBubbles)
+                {
+                    Destroy(Bubbles.gameObject);
+                }
+                BubblePool.initAmountToPool = 256;
+                BubblePool.Initialize(ObjectPools.gameObject);
+                SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
             }
-            BubblePool.initAmountToPool = 256;
-            BubblePool.Initialize(ObjectPools.gameObject);
-            SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
         }
     }
 }
