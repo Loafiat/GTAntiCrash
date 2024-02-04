@@ -13,7 +13,7 @@ namespace AntiCrash
 	public class Plugin : BaseUnityPlugin
 	{
         bool inRoom, bubbleInit;
-        Transform ObjectPools, Basement;
+        Transform ObjectPools, SodaBubbles, Basement;
         SinglePool BubblePool;
         void Start() => Utilla.Events.GameInitialized += OnGameInitialized;
         void OnGameInitialized(object sender, EventArgs e)
