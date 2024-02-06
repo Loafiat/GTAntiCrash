@@ -1,9 +1,10 @@
 ﻿using System;
+using System.IO;
 using BepInEx;
-using Photon.Pun.UtilityScripts;
+using BepInEx.Configuration;
+using Photon.Pun;
 using UnityEngine;
 using Utilla;
-using static SinglePool;
 
 namespace AntiCrash
 {
@@ -12,53 +13,72 @@ namespace AntiCrash
 	[BepInPlugin("Lofiat.AntiCrash", "AntiCrash", "1.0.0")]
 	public class Plugin : BaseUnityPlugin
 	{
-        bool inRoom, bubbleInit;
-        Transform ObjectPools, SodaBubbles, Basement;
-        SinglePool BubblePool;
-        void Start() => Utilla.Events.GameInitialized += OnGameInitialized;
+        bool bubbleInit = true;
+        GameObject Basement;
+        void Start()
+        {
+            Utilla.Events.GameInitialized += OnGameInitialized;
+            CrashConfig.Initialize();
+            if (CrashConfig.Debug.Value)
+            {
+                Application.wantsToQuit += NoQuitRightAngleBracketColonOpenParenthesis;
+            }
+        }
         void OnGameInitialized(object sender, EventArgs e)
         {
-            bubbleInit = true;
-            ObjectPools = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools").transform;
-            BubblePool = ObjectPools.GetComponent<ObjectPools>().GetPoolByObjectType(GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)"));
-            Basement = GameObject.Find("Environment Objects/LocalObjects_Prefab/Basement").transform;
+            Basement = GameObject.Find("Environment Objects/LocalObjects_Prefab/Basement").gameObject;
         }
 
-        private void DestroyBubbles()
+        static bool NoQuitRightAngleBracketColonOpenParenthesis()
+        {
+            if (PhotonNetwork.InRoom)
+            {
+                Debug.Log("Prevented crash handler.");
+                return false;
+            }
+            else
+            {
+                return true;
+            }
+        }
+
+        private void DisableBubbles()
         {
             if (bubbleInit)
             {
                 bubbleInit = false;
-                BubblePool.initAmountToPool = 0;
-                BubblePool.Initialize(ObjectPools.gameObject);
+                HarmonyPatches.ApplyHarmonyPatches();
             }
         }
 
         void Update()
         {
-            if (Basement.gameObject.activeSelf == false)
+            if (!Basement.activeSelf)
             {
-                DestroyBubbles();
+                DisableBubbles();
             }
-            else if (Basement.gameObject.activeSelf == true)
+            else if (Basement.activeSelf)
             {
-                CreateBubbles();
+                EnableBubbles();
             }
         }
 
-        private void CreateBubbles()
+        private void EnableBubbles()
         {
             if (!bubbleInit)
             {
                 bubbleInit = true;
-                SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
-                foreach (Transform Bubbles in SodaBubbles)
-                {
-                    Destroy(Bubbles.gameObject);
-                }
-                BubblePool.initAmountToPool = 256;
-                BubblePool.Initialize(ObjectPools.gameObject);
-                SodaBubbles = GameObject.Find("Environment Objects/PersistentObjects_Prefab/GlobalObjectPools/SodaBubble(Clone)").transform;
+                HarmonyPatches.RemoveHarmonyPatches();
+            }
+        }
+        public static class CrashConfig
+        {
+            public static ConfigFile ConfigFile { get; private set; }
+            public static ConfigEntry<bool> Debug;
+            public static void Initialize()
+            {
+                ConfigFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "AntiCrash.cfg"), true);
+                Debug = ConfigFile.Bind("Configuration", "Enable Debug Features", false, "Enables Debug Features.");
             }
         }
     }
