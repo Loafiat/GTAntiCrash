@@ -4,6 +4,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using Photon.Pun;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Utilla;
 
 namespace AntiCrash
@@ -13,11 +14,12 @@ namespace AntiCrash
 	[BepInPlugin("Lofiat.AntiCrash", "AntiCrash", "1.0.0")]
 	public class Plugin : BaseUnityPlugin
 	{
-        bool bubbleInit = true;
-        GameObject Basement;
+        public static bool basementLoaded = false;
         void Start()
         {
             Utilla.Events.GameInitialized += OnGameInitialized;
+            SceneManager.sceneLoaded += BasementToggle;
+            HarmonyPatches.ApplyHarmonyPatches();
             CrashConfig.Initialize();
             if (CrashConfig.Debug.Value)
             {
@@ -26,7 +28,7 @@ namespace AntiCrash
         }
         void OnGameInitialized(object sender, EventArgs e)
         {
-            Basement = GameObject.Find("Environment Objects/LocalObjects_Prefab/Basement").gameObject;
+            HarmonyPatches.ApplyHarmonyPatches();
         }
 
         static bool NoQuitRightAngleBracketColonOpenParenthesis()
@@ -42,43 +44,28 @@ namespace AntiCrash
             }
         }
 
-        private void DisableBubbles()
+        private void BasementToggle(Scene scene, LoadSceneMode mode)
         {
-            if (bubbleInit)
+            if (scene.name == "Basement")
             {
-                bubbleInit = false;
-                HarmonyPatches.ApplyHarmonyPatches();
+                basementLoaded = true;
+            }
+            else
+            {
+                basementLoaded = false;
             }
         }
-
-        void Update()
-        {
-            if (!Basement.activeSelf)
-            {
-                DisableBubbles();
-            }
-            else if (Basement.activeSelf)
-            {
-                EnableBubbles();
-            }
-        }
-
-        private void EnableBubbles()
-        {
-            if (!bubbleInit)
-            {
-                bubbleInit = true;
-                HarmonyPatches.RemoveHarmonyPatches();
-            }
-        }
+        
         public static class CrashConfig
         {
             public static ConfigFile ConfigFile { get; private set; }
             public static ConfigEntry<bool> Debug;
+            public static ConfigEntry<bool> ReportUserName;
             public static void Initialize()
             {
                 ConfigFile = new ConfigFile(Path.Combine(Paths.ConfigPath, "AntiCrash.cfg"), true);
                 Debug = ConfigFile.Bind("Configuration", "Enable Debug Features", false, "Enables Debug Features.");
+                ReportUserName = ConfigFile.Bind("Configuration", "Report Crasher Username", false, "Outputs Crasher Username to console. (CAUSES SPAM!)");
             }
         }
     }

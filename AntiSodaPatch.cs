@@ -2,6 +2,7 @@
 using UnityEngine;
 using Photon.Pun;
 using GorillaTag;
+using AntiCrash;
 
 namespace AntiSodaPatch
 {
@@ -10,7 +11,7 @@ namespace AntiSodaPatch
 	{
 		private static bool Prefix()
 		{
-            return false;
+            return Plugin.basementLoaded;
         }
 	}
 
@@ -19,7 +20,13 @@ namespace AntiSodaPatch
     {
         private static void Postfix(PhotonMessageInfo info)
         {
-            Debug.LogError(info.Sender.ToString() + "is attempting to crash your game!");
+            if (Plugin.CrashConfig.ReportUserName.Value)
+            {
+                if (!Plugin.basementLoaded)
+                {
+                    Debug.LogError(info.Sender.NickName + " is attempting to crash your game!");
+                }
+            }
         }
     }
 }
